@@ -46,14 +46,14 @@ h1 {
 /* 폰트 스타일 */
 @font-face {
   font-family: 'Paperlogy-Bold';
-  src: url('https://username.github.io/repo-name/fonts/Paperlogy-7Bold.ttf') format('truetype');
+  src: url('https://wkdwodud111.github.io/busan-sinkhole-map9/fonts/Paperlogy-7Bold.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
   font-family: 'Paperlogy-Regular';
-  src: url('https://username.github.io/repo-name/fonts/Paperlogy-4Regular.ttf') format('truetype');
+  src: url('https://wkdwodud111.github.io/busan-sinkhole-map9/fonts/Paperlogy-4Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
