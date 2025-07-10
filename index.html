@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>부산 싱크홀 안전지도(2018~2025)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>부산 싱크홀 안전지도(2018~2025)</h1>
+  <div class="container">
+    <div class="map-container">
+      <object type="image/svg+xml" data="busan_adm.svg" id="busan-map"></object>
+    </div>
+    
+    <!-- 지하철 노선도 오버레이 이미지 -->
+    <img id="subway-overlay" src="subway-overlay.png"
+      style="
+        position: absolute;
+        top: 95px;  /* 지도 위에 맞추기 위한 위치 */
+        left: 67px; /* 지도 위에 맞추기 위한 위치 */
+        width: 671px; /* 고정된 크기 */
+        height: 648px; /* 고정된 크기 */
+        opacity: 1;
+        pointer-events: none; /* 이미지 위에서 클릭하지 않도록 설정 */
+        z-index: 500;
+        display: none; /* 처음엔 숨김 */
+      ">
+
+    <!-- 버튼 위치 -->
+    <div style="position:absolute; top:25px; left:140px; z-index:1000;">
+      <button onclick="toggleSubway()">지하철 노선도 표시</button>
+    </div>
+
+    <!-- 기존 싱크홀 버튼 -->
+    <div style="position:absolute; top:25px; left:20px; z-index:1000;">
+      <button onclick="toggleMarkers()">싱크홀 사고 표시</button>
+    </div>
+
+    <!-- 위험도 산출기준 버튼 미완성 --> 
+    <div style="position:absolute; top:25px; left:272.5px; z-index:1000;">
+      <button onclick="toggleWarning()">위험도 산출기준</button>
+    </div>
+
+    <!-- 인포박스 (처음엔 숨김) -->
+    <div id="warning-info-box" style="
+      position: absolute;
+      top: 90px;
+      right: 60px;
+      width: 750px;
+      height: 640px;
+      padding: 20px;
+      background-color: white;
+      border: 2px solid black;
+      font-size: 15px;
+      z-index: 999;
+      display: none;  /* 처음엔 안 보이게 */
+      ">
+      <h3 style="color: orange; font-size: 20px; margin-top: 0;">🔶 위험도 산출 기준</h3>
+      <p><strong>싱크홀 위험도</strong>는 단순 사고 수뿐 아니라 다양한 도시 지반 요인을 종합적으로 평가하여 산정됩니다.<br>
+      아래 항목들을 정량화하고 가중치를 부여해, <strong>1등급(가장 안전)부터 5등급(가장 위험)</strong>까지 분류합니다.</p>
+
+      <p><strong>지반 특성(미완성)</strong><br>
+      - 지질 분포 (가중치 2)<br>
+      - 토사층 두께 (가중치 1)<br>
+      - 충적층 두께 (가중치 2)<br>
+      → 땅의 구성물(모래, 자갈, 점토 등)과 이들의 두께, 불균질성 여부를 분석하여 싱크홀 취약성 판단</p>
+
+      <p><strong>지하수 영향(미완성)</strong><br>
+      - 지하수위 (가중치 2)<br>
+      - 수위 저하량 (가중치 2)<br>
+      - 토양 침투성/투수계수 (가중치 1)<br>
+      → 물 빠짐이 빠르고 지하수위 변화가 큰 지역일수록 싱크홀 발생 가능성 높음</p>
+
+      <p><strong>지하철 영향도(어느정도 가능)</strong><br>
+      - 노선 분포도 (가중치 2)<br>
+      - 정거장 밀집도 (가중치 1)<br>
+      → 지하수 배출량이 많은 지하철 노선 인접 지역은 상대적으로 위험</p>
+
+      <p><strong>싱크홀 사고 이력(어느정도 가능)</strong><br>
+      - 사고 밀집도 (가중치 2)<br>
+      - 사고 규모 (가중치 1)<br>
+      → 반복 발생 또는 대형 사고 지역은 추가 발생 가능성 존재</p>
+
+      <p><strong>노후건물 분포(미완성)</strong><br>
+      - 30년 이상 노후 건물 밀집도 (가중치 1)<br>
+      → 노후 기반시설 영향으로 싱크홀 확산 가능성 있음</p>
+      </div>
+
+    <!-- 위험 등급 이미지 -->
+    <div style="position: fixed; top: 100px; left: 60px; z-index: 1000;">
+      <img src="warning.png" alt="위험 등급" style="width: 250px; height: auto;">
+    </div>
+
+    <!-- 사상구 정보 박스 -->
+    <div class="info-box info-box1" id="info-sasanggu1" style="display: none;">
+      <h2>위험등급 5</h2>
+      <p>부산광역시 사상구</p>
+      <p>사고수 17</p>
+    </div>
+
+    <div class="info-box info-box2" id="info-sasanggu2" style="display: none;">
+      <p>지반 위험도 3</p>
+      <p>지하수 3</p>
+      <p>지하철 분포 3</p>
+      <p>노후건물 분포 2</p>
+    </div>
+
+    <div class="info-box info-box3" id="info-sasanggu3" style="display: none;">
+      <h3>발생 현황</h3>
+      <p>2023년부터 총 14차례</p>
+      <h3>싱크홀 발생 주요 지역</h3>
+      <p>사상~하단선 공사 인근</p>
+      <h3>최근 사고</h3>
+      <p>- 2025년 4월 13일, 14일 감전동</p>
+      <p>- 길이 5m, 깊이 5m 싱크홀 발생</p>
+      <p>- 길이 3m, 깊이 2m 싱크홀 발생</p>
+      <p>- 차량 추락 사고 및 도로 파손 발생</p>
+    </div>
+
+    <div class="info-box info-box4" id="info-sasanggu4" style="display: none;">
+      <h3>지반특성</h3>
+      <p>- 점토층과 모래층이 혼합된 연약지반</p>
+      <p>- 지하수 유입, 인근에 하천</p>
+      <h3>대책</h3>
+      <p>① 수직 차수 보강 그라우팅</p>
+      <p>공사 구간 1,100곳에 보강 작업 실시</p>
+      <p>② 정밀 계측 및 모니터링 강화</p>
+      <p>GPR 탐사, CCTV 점검 등</p>
+      <p>③ 지반 침하 위험도 평가</p>
+      <p>위험 지역에 대한 지속적인 모니터링</p>
+    </div>
+
+    <!-- 이미지 박스 (기본적으로 숨김 처리) -->
+    <div id="image-box" style="display: none; text-align: center;">
+      <!-- 이미지 경로를 data-src로 정의 -->
+      <img id="image1" data-src="그림1.png" alt="사고 사진 1" style="width: auto; height: 500px; margin-top: 100px; margin-left: 20px;"/>
+      <img id="image2" data-src="그림2.jpg" alt="사고 사진 2" style="width: auto; height: 500px; margin-top: 100px; margin-left: 20px;"/>
+    </div>
+
+    <!-- 사하구 정보 박스 -->
+    <div class="info-box info-box1" id="info-sahagu1" style="display: none;">
+      <h3>위험등급 4</h3>
+      <p>부산광역시 사하구</p>
+      <p>사고수 16</p>
+    </div>
+
+    <div class="info-box info-box2" id="info-sahagu2" style="display: none;">
+      <p>지반 위험도 3</p>
+      <p>지하수 2</p>
+      <p>지하철 분포 3</p>
+      <p>노후건물 분포 3</p>
+    </div>
+
+    <div class="info-box info-box3" id="info-sahagu3" style="display: none;">
+      <h3>발생 현황</h3>
+      <p>2018년부터 총 16차례</p>
+      <h3>싱크홀 발생 주요 지역</h3>
+      <p>하단선 공사 구간, 괴정동</p>
+      <h3>최근 사고</h3>
+      <p>- 2025년 4월 2일 괴정동</p>
+      <p>- 길이 1m, 깊이 50cm, 지름 70cm</p>
+      <p>- 도로 파손 발생</p>
+    </div>
+
+    <div class="info-box info-box4" id="info-sahagu4" style="display: none;">
+      <h3>지반특성</h3>
+      <p>- 점토층과 모래층이 혼합된 연약지반</p>
+      <p>- 지하수 유입으로 인한 지반 침하 위험</p>
+      <h3>대책</h3>
+      <p>① 상수도관 점검</p>
+      <p>상수도관 이상 여부 점검 및 보수</p>
+      <p>② 다짐 공법 개선</p>
+      <p>되메우기 공법 강화로 지반 안정화</p>
+      <p>③ 지반 모니터링</p>
+      <p>지속적인 지반 안정성 점검 및 평가</p>
+    </div>
+
+    <!-- 남구 정보 박스 -->
+<div class="info-box info-box1" id="info-namgu1" style="display: none;">
+  <h4>위험등급 3</h4>
+  <p>부산광역시 남구</p>
+  <p>사고수 11</p>
+</div>
+
+<div class="info-box info-box2" id="info-namgu2" style="display: none;">
+  <p>지반 위험도 3</p>
+  <p>지하수 3</p>
+  <p>지하철 분포 3</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-namgu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2021년부터 총 11건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>대연동, 못골터널 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 2월 17일, 수영로</p>
+  <p>- 깊이 2.0m, 직경 2.5m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-namgu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 도심밀집지, 복합지반 분포</p>
+  <p>- 우수관 유출 영향 존재</p>
+  <h3>대책</h3>
+  <p>① 상·하수도 정비 사업 지속 추진</p>
+  <p>② 도로포장 하부 공동 정밀조사</p>
+  <p>③ 정기 지하수위 측정 및 대응</p>
+</div>
+    <!-- 해운대구 정보 박스 -->
+<div class="info-box info-box1" id="info-haeundaegu1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 해운대구</p>
+  <p>사고수 4</p>
+</div>
+
+<div class="info-box info-box2" id="info-haeundaegu2" style="display: none;">
+  <p>지반 위험도 1</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 2</p>
+  <p>노후건물 분포 1</p>
+</div>
+
+<div class="info-box info-box3" id="info-haeundaegu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2020년 이후 4건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>센텀시티 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 9월 1일, 센텀로</p>
+  <p>- 깊이 1.5m, 직경 2m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-haeundaegu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 기반암이 안정적인 지역</p>
+  <p>- 지하수위 변화가 적고 투수성 양호</p>
+  <h3>대책</h3>
+  <p>① 정기 점검 및 유지보수 강화</p>
+  <p>② 지하수 흐름 모니터링</p>
+  <p>③ 위험 발생 시 빠른 응급 조치 체계 마련</p>
+</div>
+
+<!-- 동래구 정보 박스 -->
+<div class="info-box info-box1" id="info-dongnaegu1" style="display: none;">
+  <h3>위험등급 4</h3>
+  <p>부산광역시 동래구</p>
+  <p>사고수 15</p>
+</div>
+
+<div class="info-box info-box2" id="info-dongnaegu2" style="display: none;">
+  <p>지반 위험도 4</p>
+  <p>지하수 3</p>
+  <p>지하철 분포 3</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-dongnaegu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2021년부터 총 13건 이상</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>동래역 및 미남역 인근</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 2월 2일, 명륜로</p>
+  <p>- 깊이 2.5m, 직경 3m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-dongnaegu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 충적층과 점토층이 혼합된 지반</p>
+  <p>- 지하수위 변동 심함</p>
+  <h3>대책</h3>
+  <p>① 노후 상하수도 정비</p>
+  <p>② 도로 하부 공동 탐사 확대</p>
+  <p>③ 위험도 높은 지역 집중 점검</p>
+</div>
+<!-- 연제구 정보 박스 -->
+<div class="info-box info-box1" id="info-yeonjegu1" style="display: none;">
+  <h3>위험등급 4</h3>
+  <p>부산광역시 연제구</p>
+  <p>사고수 12</p>
+</div>
+
+<div class="info-box info-box2" id="info-yeonjegu2" style="display: none;">
+  <p>지반 위험도 3</p>
+  <p>지하수 3</p>
+  <p>지하철 분포 4</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-yeonjegu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년부터 총 12건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>시청역, 연산교차로 부근</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 1월 11일, 연산로</p>
+  <p>- 깊이 2m, 직경 2.5m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-yeonjegu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 사질토 기반 혼합지반</p>
+  <p>- 강우 시 침투율 높음</p>
+  <h3>대책</h3>
+  <p>① 배수 시스템 정비</p>
+  <p>② 상수관 누수 점검 확대</p>
+  <p>③ 정기적인 도로 하부 조사</p>
+</div>
+<!-- 수영구 정보 박스 -->
+<div class="info-box info-box1" id="info-suyeonggu1" style="display: none;">
+  <h4>위험등급 3</h4>
+  <p>부산광역시 수영구</p>
+  <p>사고수 10</p>
+</div>
+
+<div class="info-box info-box2" id="info-suyeonggu2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 3</p>
+  <p>지하철 분포 3</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-suyeonggu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2021년부터 총 10건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>광안리, 민락수변공원 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 11월 20일, 광안로</p>
+  <p>- 깊이 1.8m, 직경 2.2m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-suyeonggu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 모래층과 충적층 혼합</p>
+  <p>- 해안가 인근으로 지하수 유동 활발</p>
+  <h3>대책</h3>
+  <p>① 하수관 노후도 조사</p>
+  <p>② 연약지반 구간 도로보강</p>
+  <p>③ 침하 사고 대응 훈련 강화</p>
+</div>
+<!-- 금정구 정보 박스 -->
+<div class="info-box info-box1" id="info-geumjeonggu1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 금정구</p>
+  <p>사고수 8</p>
+</div>
+
+<div class="info-box info-box2" id="info-geumjeonggu2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 2</p>
+  <p>노후건물 분포 1</p>
+</div>
+
+<div class="info-box info-box3" id="info-geumjeonggu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년부터 총 8건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>부곡동 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 8월 18일, 서동로</p>
+  <p>- 깊이 1.2m, 직경 1.8m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-geumjeonggu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 기반암과 모래층 혼재</p>
+  <p>- 배수 기능 비교적 양호</p>
+  <h3>대책</h3>
+  <p>① 도로 하부 공동 점검</p>
+  <p>② 상하수도 점검 주기 강화</p>
+  <p>③ 기반시설 데이터베이스 구축</p>
+</div>
+<!-- 북구 정보 박스 -->
+<div class="info-box info-box1" id="info-bukgu1" style="display: none;">
+  <h3>위험등급 4</h3>
+  <p>부산광역시 북구</p>
+  <p>사고수 14</p>
+</div>
+
+<div class="info-box info-box2" id="info-bukgu2" style="display: none;">
+  <p>지반 위험도 3</p>
+  <p>지하수 4</p>
+  <p>지하철 분포 3</p>
+  <p>노후건물 분포 3</p>
+</div>
+
+<div class="info-box info-box3" id="info-bukgu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2021년부터 총 14건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>구포시장, 덕천교차로 인근</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 7월 8일, 구포로</p>
+  <p>- 깊이 2.8m, 직경 3.2m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-bukgu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 충적층 분포, 배수 취약</p>
+  <p>- 지하수위 계절 변화 큼</p>
+  <h3>대책</h3>
+  <p>① 지하수위 지속 모니터링</p>
+  <p>② 하부 공동 정밀 탐사</p>
+  <p>③ 침하 예방 포장공법 확대</p>
+</div>
+<!-- 기장군 정보 박스 -->
+<div class="info-box info-box1" id="info-gijanggun1" style="display: none;">
+  <h6>위험등급 1</h6>
+  <p>부산광역시 기장군</p>
+  <p>사고수 1</p>
+</div>
+
+<div class="info-box info-box2" id="info-gijanggun2" style="display: none;">
+  <p>지반 위험도 1</p>
+  <p>지하수 1</p>
+  <p>지하철 분포 1</p>
+  <p>노후건물 분포 1</p>
+</div>
+
+<div class="info-box info-box3" id="info-gijanggun3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2023년 이후 1건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>일광신도시 부근</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 5월 9일, 기장읍</p>
+  <p>- 깊이 1m, 직경 1.5m 소규모 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-gijanggun4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 기반암 위주로 안정적 지반</p>
+  <p>- 대규모 개발 지역은 지하수 관리 필요</p>
+  <h3>대책</h3>
+  <p>① 개발지 지하수위 사전 조사</p>
+  <p>② 지하 인프라 구축 시 지반 안정성 평가</p>
+  <p>③ 신규 아파트 단지 대상 침하 예방 점검</p>
+</div>
+<!-- 부산진구 정보 박스 -->
+<div class="info-box info-box1" id="info-busanjingu1" style="display: none;">
+  <h4>위험등급 3</h4>
+  <p>부산광역시 부산진구</p>
+  <p>사고수 11</p>
+</div>
+
+<div class="info-box info-box2" id="info-busanjingu2" style="display: none;">
+  <p>지반 위험도 3</p>
+  <p>지하수 3</p>
+  <p>지하철 분포 3</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-busanjingu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2021년부터 총 11건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>서면 일대, 전포대로</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 3월 22일, 전포동</p>
+  <p>- 깊이 2.3m, 직경 2.7m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-busanjingu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 도심 밀집 지역으로 지하수 유동 활발</p>
+  <p>- 연약한 충적층 일부 분포</p>
+  <h3>대책</h3>
+  <p>① 지하 매설물 관리 강화</p>
+  <p>② 정밀 조사 통한 위험지역 선별</p>
+  <p>③ 상시 감시체계 및 주민 신고 연계</p>
+</div>
+<!-- 동구 정보 박스 -->
+<div class="info-box info-box1" id="info-donggu1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 동구</p>
+  <p>사고수 4</p>
+</div>
+
+<div class="info-box info-box2" id="info-donggu2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 2</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-donggu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년부터 총 4건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>초량동, 부산역 인근</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 6월 10일, 초량로</p>
+  <p>- 깊이 1.6m, 직경 2.1m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-donggu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 구도심 지역, 노후 인프라 밀집</p>
+  <p>- 하부 공동 발생 가능성 높음</p>
+  <h3>대책</h3>
+  <p>① 노후 상하수도 관로 교체</p>
+  <p>② 지중탐사 장비 활용 정밀조사</p>
+  <p>③ 항만 배수망 연계점 점검 강화</p>
+</div>
+<!-- 서구 정보 박스 -->
+<div class="info-box info-box1" id="info-seogu1" style="display: none;">
+  <h4>위험등급 3</h4>
+  <p>부산광역시 서구</p>
+  <p>사고수 11</p>
+</div>
+
+<div class="info-box info-box2" id="info-seogu2" style="display: none;">
+  <p>지반 위험도 3</p>
+  <p>지하수 3</p>
+  <p>지하철 분포 2</p>
+  <p>노후건물 분포 3</p>
+</div>
+
+<div class="info-box info-box3" id="info-seogu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2021년부터 총 11건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>암남동, 송도해수욕장 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 1월 28일, 충무대로</p>
+  <p>- 깊이 2.1m, 직경 2.6m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-seogu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 구릉지 기반, 배수 경로 불규칙</p>
+  <p>- 노후 건물 및 도로 인프라 밀집</p>
+  <h3>대책</h3>
+  <p>① 노후 상하수도 교체사업 추진</p>
+  <p>② 급경사지 붕괴 위험지구 보강</p>
+  <p>③ 재해취약지역 사전 점검 강화</p>
+</div>
+<!-- 중구 정보 박스 -->
+<div class="info-box info-box1" id="info-junggu1" style="display: none;">
+  <h6>위험등급 1</h6>
+  <p>부산광역시 중구</p>
+  <p>사고수 2</p>
+</div>
+
+<div class="info-box info-box2" id="info-junggu2" style="display: none;">
+  <p>지반 위험도 1</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 2</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-junggu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년부터 총 2건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>남포동, 보수동 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 4월 3일, 대청로</p>
+  <p>- 깊이 1.5m, 직경 2m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-junggu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 구릉지형, 암반 기반 안정적</p>
+  <p>- 지하수 변화 영향 적음</p>
+  <h3>대책</h3>
+  <p>① 노후건물 주변 침하 조사</p>
+  <p>② 배수로 및 하수관 정비</p>
+  <p>③ 기반시설 노후도 종합진단</p>
+</div>
+<!-- 영도구 정보 박스 -->
+<div class="info-box info-box1" id="info-yeongdogu1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 영도구</p>
+  <p>사고수 4</p>
+</div>
+
+<div class="info-box info-box2" id="info-yeongdogu2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 1</p>
+  <p>노후건물 분포 2</p>
+</div>
+
+<div class="info-box info-box3" id="info-yeongdogu3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년부터 총 4건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>남항동, 태종로 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2024년 10월 12일, 영선동</p>
+  <p>- 깊이 1.7m, 직경 2.3m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-yeongdogu4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 해안에 인접한 복합지반</p>
+  <p>- 침식 및 침투 위험 존재</p>
+  <h3>대책</h3>
+  <p>① 해안도로 지반 보강</p>
+  <p>② 지하수 유출 방지 설비 강화</p>
+  <p>③ 노후 인프라 사전 정비</p>
+</div>
+<!-- 강서구1 정보 박스 -->
+<div class="info-box info-box1" id="info-gangseogu1-1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 강서구 (서부)</p>
+  <p>사고수 4</p>
+</div>
+
+<div class="info-box info-box2" id="info-gangseogu1-2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 1</p>
+  <p>노후건물 분포 1</p>
+</div>
+
+<div class="info-box info-box3" id="info-gangseogu1-3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년 이후 총 4건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>명지동, 국제산단 주변</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 2월 15일, 명지국제신도시 내</p>
+  <p>- 깊이 1.4m, 직경 2.2m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-gangseogu1-4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 매립지 기반, 배수 성능 보통</p>
+  <p>- 지하수위 변화 영향 있음</p>
+  <h3>대책</h3>
+  <p>① 매립지 침하 감시 체계 운영</p>
+  <p>② 지하공간 정보 구축</p>
+  <p>③ 개발사업 시 지반 안정성 사전 평가</p>
+</div>
+<!-- 강서구2 정보 박스 -->
+<div class="info-box info-box1" id="info-gangseogu2-1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 강서구 (동부)</p>
+  <p>사고수 4</p>
+</div>
+
+<div class="info-box info-box2" id="info-gangseogu2-2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 1</p>
+  <p>노후건물 분포 1</p>
+</div>
+
+<div class="info-box info-box3" id="info-gangseogu2-3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년 이후 총 4건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>녹산산단, 대저동 일대</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 3월 10일, 대저로</p>
+  <p>- 깊이 1.6m, 직경 2.0m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-gangseogu2-4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 충적층과 매립지 혼재</p>
+  <p>- 지하수 유입에 민감</p>
+  <h3>대책</h3>
+  <p>① 유출입수 모니터링 강화</p>
+  <p>② 지하 인프라 노후도 평가</p>
+  <p>③ 주요 산업시설 주변 정기 점검</p>
+</div>
+<!-- 강서구3 정보 박스 -->
+<div class="info-box info-box1" id="info-gangseogu3-1" style="display: none;">
+  <h5>위험등급 2</h5>
+  <p>부산광역시 강서구 (북부)</p>
+  <p>사고수 4</p>
+</div>
+
+<div class="info-box info-box2" id="info-gangseogu3-2" style="display: none;">
+  <p>지반 위험도 2</p>
+  <p>지하수 2</p>
+  <p>지하철 분포 1</p>
+  <p>노후건물 분포 1</p>
+</div>
+
+<div class="info-box info-box3" id="info-gangseogu3-3" style="display: none;">
+  <h3>발생 현황</h3>
+  <p>2022년 이후 총 4건 발생</p>
+  <h3>싱크홀 발생 주요 지역</h3>
+  <p>대저2동, 공항로 인근</p>
+  <h3>최근 사고</h3>
+  <p>- 2025년 4월 5일, 공항입구</p>
+  <p>- 깊이 1.5m, 직경 2.0m 싱크홀 발생</p>
+</div>
+
+<div class="info-box info-box4" id="info-gangseogu3-4" style="display: none;">
+  <h3>지반특성</h3>
+  <p>- 하천 인접 저지대, 충적층 발달</p>
+  <p>- 강우 시 지하수위 급변</p>
+  <h3>대책</h3>
+  <p>① 배수 설비 정비 및 확대</p>
+  <p>② 항공시설 주변 지반조사 강화</p>
+  <p>③ 국지침하 예측 모델 도입</p>
+</div>
+</div> 
+<script>
+  let subwayVisible = false;
+
+  function toggleSubway() {
+    const overlay = document.getElementById("subway-overlay");
+    overlay.style.display = subwayVisible ? "none" : "block";
+    subwayVisible = !subwayVisible;
+  }
+</script> 
+<script src="main.js"></script>
+
+</body>
+</html>
